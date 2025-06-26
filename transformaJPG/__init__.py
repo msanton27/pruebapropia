@@ -4,25 +4,27 @@ from PIL import Image
 from io import BytesIO
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info("⚠️ Función Azure llamada: transformar imagen JPG a TIFF")
+    logging.info("🟡 Función Azure iniciada: transformación de imagen JPG a TIFF")
 
     try:
         file_bytes = req.get_body()
+        logging.info("📥 Bytes recibidos. Tamaño: %d bytes", len(file_bytes))
+
         if not file_bytes:
+            logging.warning("⚠️ No se recibió ningún cuerpo en la petición")
             return func.HttpResponse(
                 "No se ha enviado ninguna imagen",
                 status_code=400
             )
 
-        # Cargar imagen JPG desde los bytes recibidos
         image = Image.open(BytesIO(file_bytes))
+        logging.info("🖼️ Imagen JPG cargada correctamente")
 
-        # Convertir a TIFF en memoria
         output_stream = BytesIO()
         image.save(output_stream, format='TIFF')
         output_stream.seek(0)
+        logging.info("✅ Imagen convertida a TIFF en memoria")
 
-        # Devolver la imagen TIFF como binario
         return func.HttpResponse(
             output_stream.read(),
             mimetype="image/tiff",
@@ -30,7 +32,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
-        logging.error(f"Error al procesar imagen: {e}")
+        logging.error(f"❌ Error al procesar la imagen: {e}", exc_info=True)
         return func.HttpResponse(
             f"Error interno: {str(e)}",
             status_code=500
