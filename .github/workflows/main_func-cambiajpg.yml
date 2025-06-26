@@ -36,6 +36,10 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+        
+      - name: Instalar dependencias manualmente
+        run: bash startup.sh
+
 
       # Optional: Add step to run tests here
 
