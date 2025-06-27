@@ -1,6 +1,6 @@
 import logging
 import azure.functions as func
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -8,8 +8,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         file_bytes = req.get_body()
-        logging.info("📥 Bytes recibidos. Tamaño: %d bytes", len(file_bytes))
-
         if not file_bytes:
             logging.warning("⚠️ No se recibió ningún cuerpo en la petición")
             return func.HttpResponse(
@@ -17,13 +15,34 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 status_code=400
             )
 
-        image = Image.open(BytesIO(file_bytes))
-        logging.info("🖼️ Imagen JPG cargada correctamente")
+        logging.info("📥 Bytes recibidos. Tamaño: %d bytes", len(file_bytes))
 
+        # Intentar abrir la imagen
+        try:
+            image = Image.open(BytesIO(file_bytes))
+        except UnidentifiedImageError:
+            logging.warning("🚫 El archivo recibido no es una imagen válida")
+            return func.HttpResponse(
+                "El archivo recibido no es una imagen válida",
+                status_code=415
+            )
+
+        # Verificar que sea formato JPEG
+        if image.format not in ["JPEG", "JPG"]:
+            logging.warning(f"❌ Formato de imagen no compatible: {image.format}")
+            return func.HttpResponse(
+                "Solo se permiten imágenes en formato JPG",
+                status_code=400
+            )
+
+        logging.info("🖼️ Imagen JPG cargada correctamente. Formato: %s", image.format)
+
+        # Convertir a TIFF en memoria
         output_stream = BytesIO()
         image.save(output_stream, format='TIFF')
         output_stream.seek(0)
-        logging.info("✅ Imagen convertida a TIFF en memoria")
+
+        logging.info("✅ Imagen convertida a TIFF en memoria. Tamaño final: %d bytes", output_stream.getbuffer().nbytes)
 
         return func.HttpResponse(
             output_stream.read(),
@@ -32,8 +51,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
-        logging.error(f"❌ Error al procesar la imagen: {e}", exc_info=True)
+        logging.error("❌ Error al procesar la imagen: %s", str(e), exc_info=True)
         return func.HttpResponse(
-            f"Error interno: {str(e)}",
+            f"Error interno del servidor: {str(e)}",
             status_code=500
         )
