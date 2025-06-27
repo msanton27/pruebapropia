@@ -2,6 +2,7 @@ import logging
 import azure.functions as func
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
+import traceback
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("🟡 Función Azure iniciada: transformación de imagen JPG a TIFF")
@@ -33,5 +34,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
-        logging.exception("❌ Excepción inesperada al procesar la imagen")
-        return func.HttpResponse(f"Error interno: {str(e)}", status_code=500)
+        error_trace = traceback.format_exc()
+        logging.error("❌ Error al procesar la imagen: %s", error_trace)
+        return func.HttpResponse(f"Error interno: {error_trace}", status_code=500)
+
